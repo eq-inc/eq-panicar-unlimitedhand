@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:tag="arMainLayout"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <com.dopanic.panicarkit.lib.PARCameraView
+        android:id="@+id/arCameraView"
+        android:tag="arCameraView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"/>
+
+    <com.dopanic.panicarkit.lib.PARView
+        android:id="@+id/arContentView"
+        android:tag="arContentView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.dopanic.panicarkit.lib.PARRadarView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:gravity="center"
+        android:background="@drawable/radar_screen"
+        android:id="@+id/arRadarView"
+        android:tag="arRadarView"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true" />
+
+</RelativeLayout>
