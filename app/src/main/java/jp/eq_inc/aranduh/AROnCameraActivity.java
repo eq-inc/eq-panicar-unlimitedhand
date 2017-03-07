@@ -8,16 +8,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Toast;
 
-import jp.co.thcomp.unlimitedhand.UhAccessHelper;
 import jp.co.thcomp.util.RuntimePermissionUtil;
 import jp.co.thcomp.util.ToastUtil;
-import jp.eq_inc.aranduh.fragment.MainArFragment;
+import jp.eq_inc.aranduh.fragment.AROnCameraFragment;
 
-public class MainActivity extends AppCompatActivity {
+public class AROnCameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_ar_on_camera);
 
         RuntimePermissionUtil.requestPermissions(
                 this,
@@ -51,11 +50,11 @@ public class MainActivity extends AppCompatActivity {
                 FragmentManager manager = getFragmentManager();
                 if (manager.findFragmentByTag(null) == null) {
                     manager.beginTransaction()
-                            .add(R.id.container, new MainArFragment())
+                            .add(R.id.container, new AROnCameraFragment())
                             .commit();
                 }
             } else {
-                ToastUtil.showToast(MainActivity.this, "cannot launch by not allowed permissions", Toast.LENGTH_LONG);
+                ToastUtil.showToast(AROnCameraActivity.this, "cannot launch by not allowed permissions", Toast.LENGTH_LONG);
                 finish();
             }
         }

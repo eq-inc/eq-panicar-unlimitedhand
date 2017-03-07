@@ -1,6 +1,7 @@
 package jp.eq_inc.aranduh.fragment;
 
 import android.app.Activity;
+import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -30,8 +31,8 @@ import jp.co.thcomp.util.ToastUtil;
 import jp.eq_inc.aranduh.R;
 import jp.eq_inc.aranduh.poi.POIImageView;
 
-public class MainArFragment extends PARFragment {
-    private static final String TAG = MainArFragment.class.getSimpleName();
+public class AROnCameraFragment extends PARFragment {
+    private static final String TAG = AROnCameraFragment.class.getSimpleName();
     private static final float MINIMUM_MOVE_DISTANCE = 0.0001f;
     private static final int NORMAL_EEL = 0;
     private static final int DISCHARGING_EEL = 1;
@@ -47,6 +48,15 @@ public class MainArFragment extends PARFragment {
     private int mEelstatus = NORMAL_EEL;
     private boolean mDischarging = false;
 
+    public static AROnCameraFragment newInstance(int cameraVisibility){
+        AROnCameraFragment ret = new AROnCameraFragment();
+        Bundle argumentBundle = new Bundle();
+
+        argumentBundle.putInt("cameraVisibility", cameraVisibility);
+        ret.setArguments(argumentBundle);
+
+        return ret;
+    }
 
     @Override
     public void onCreate(Bundle savedInstance) {
@@ -60,8 +70,13 @@ public class MainArFragment extends PARFragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        this.viewLayoutId = R.layout.fragment_main;
+        this.viewLayoutId = R.layout.fragment_ar_on_camera;
         View view = super.onCreateView(inflater, container, savedInstanceState);
+        Bundle argumentBundle = getArguments();
+        if(argumentBundle != null){
+            int cameraVisibility = argumentBundle.getInt("cameraVisibility");
+            view.findViewWithTag("arCameraView").setVisibility(cameraVisibility);
+        }
         getRadarView().setRadarRange(500);
 
         UHConnectTask task = new UHConnectTask();
@@ -309,7 +324,7 @@ public class MainArFragment extends PARFragment {
             Activity activity = getActivity();
             mUHAccessHelper = new UhAccessHelper(activity);
 
-            mConnectingDialog = new ProgressDialog(MainArFragment.this.getActivity());
+            mConnectingDialog = new ProgressDialog(AROnCameraFragment.this.getActivity());
             mConnectingDialog.setMessage("Search and connect to Unlimited Hand");
             mConnectingDialog.setCanceledOnTouchOutside(false);
             mConnectingDialog.setCancelable(true);
