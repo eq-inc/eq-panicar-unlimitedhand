@@ -32,17 +32,21 @@ import jp.eq_inc.aranduh.poi.POIImageView;
 
 public class MainArFragment extends PARFragment {
     private static final String TAG = MainArFragment.class.getSimpleName();
+    private static final float MINIMUM_MOVE_DISTANCE = 0.0001f;
     private static final int NORMAL_EEL = 0;
     private static final int DISCHARGING_EEL = 1;
+    private static final int MOVING_EEL = 2;
     private static final int[] DISCHARGING_EEL_CHANNELS = {/*0, 1, */2, 3, 4, 5, /*6, 7*/};
 
     private LocationUpdater mLocationUpdater;
     private Location mFirstLocation;
+    private Location mDistinationLocation;
     private PARPoi mPOI;
     private Handler mMainLooperHandler;
     private UhAccessHelper mUHAccessHelper;
     private int mEelstatus = NORMAL_EEL;
     private boolean mDischarging = false;
+
 
     @Override
     public void onCreate(Bundle savedInstance) {
@@ -91,9 +95,75 @@ public class MainArFragment extends PARFragment {
     }
 
     private void sendNextMessage() {
-        int nextStatus = ((int) (Math.random() * 1000)) % 2;
-        int delayMS = (((int) (Math.random() * 1000)) % 10) * 1000;
+        int nextStatus = ((int) (Math.random() * 1000)) % 3;
+        int delayMS = (((int) (Math.random() * 1000)) % 3) * 1000;
         mMainLooperHandler.sendEmptyMessageDelayed(nextStatus, delayMS);
+    }
+
+    private void updatePosition(PARPoi poi) {
+        Location poiLocation = poi.getLocation();
+
+        if (mDistinationLocation == null) {
+            int[] signArray = {1, -1};
+            mDistinationLocation = new Location(poiLocation);
+
+            mDistinationLocation.setLatitude(poiLocation.getLatitude() + signArray[(int) ((Math.random() * 1000) % 2)] * (float) Math.random() / 100);
+            mDistinationLocation.setLongitude(poiLocation.getLongitude() + signArray[(int) ((Math.random() * 1000) % 2)] * (float) Math.random() / 100);
+            mDistinationLocation.setAltitude(poiLocation.getAltitude() + signArray[(int) ((Math.random() * 1000) % 2)] * (float) Math.random() / 1000);
+
+            LogUtil.d(TAG,
+                    "diff LLA(" +
+                            (mDistinationLocation.getLatitude() - poiLocation.getLatitude()) + ", " +
+                            (mDistinationLocation.getLongitude() - poiLocation.getLongitude()) + ", " +
+                            (mDistinationLocation.getAltitude() - poiLocation.getAltitude()) + ")");
+        }
+
+        //MINIMUM_MOVE_DISTANCE
+        float diffLat = (float) (mDistinationLocation.getLatitude() - poiLocation.getLatitude());
+        float diffLon = (float) (mDistinationLocation.getLongitude() - poiLocation.getLongitude());
+        float diffAlt = (float) (mDistinationLocation.getAltitude() - poiLocation.getAltitude());
+        boolean finished = true;
+
+        if (Math.abs(diffLat) > MINIMUM_MOVE_DISTANCE) {
+            if (mDistinationLocation.getLatitude() > poiLocation.getLatitude()) {
+                poiLocation.setLatitude(poiLocation.getLatitude() + MINIMUM_MOVE_DISTANCE);
+            } else {
+                poiLocation.setLatitude(poiLocation.getLatitude() - MINIMUM_MOVE_DISTANCE);
+            }
+            finished &= false;
+        } else {
+            poiLocation.setLatitude(mDistinationLocation.getLatitude());
+        }
+        if (Math.abs(diffLon) > MINIMUM_MOVE_DISTANCE) {
+            if (mDistinationLocation.getLongitude() > poiLocation.getLongitude()) {
+                poiLocation.setLongitude(poiLocation.getLongitude() + MINIMUM_MOVE_DISTANCE);
+            } else {
+                poiLocation.setLongitude(poiLocation.getLongitude() - MINIMUM_MOVE_DISTANCE);
+            }
+            finished &= false;
+        } else {
+            poiLocation.setLongitude(mDistinationLocation.getLongitude());
+        }
+        if (Math.abs(diffAlt) > MINIMUM_MOVE_DISTANCE) {
+            if (mDistinationLocation.getAltitude() > poiLocation.getAltitude()) {
+                poiLocation.setAltitude(poiLocation.getAltitude() + MINIMUM_MOVE_DISTANCE);
+            } else {
+                poiLocation.setAltitude(poiLocation.getAltitude() - MINIMUM_MOVE_DISTANCE);
+            }
+            finished &= false;
+        } else {
+            poiLocation.setAltitude(mDistinationLocation.getAltitude());
+        }
+
+        if (finished) {
+            mDistinationLocation = null;
+            sendNextMessage();
+        } else {
+            poi.setLocation(poiLocation);
+            poi.updateLocation();
+            int delayMS = 1000 / 60;    // 60fps
+            mMainLooperHandler.sendEmptyMessageDelayed(MOVING_EEL, delayMS);
+        }
     }
 
     private LocationUpdater.OnPollingStatusListener mPollingStatusListener = new LocationUpdater.OnPollingStatusListener() {
@@ -167,6 +237,7 @@ public class MainArFragment extends PARFragment {
 
                                         for (int channel : DISCHARGING_EEL_CHANNELS) {
                                             if (mDischarging && (mEelstatus == DISCHARGING_EEL)) {
+                                                uhAccessHelper = mUHAccessHelper;
                                                 if (uhAccessHelper != null) {
                                                     uhAccessHelper.electricMuscleStimulation(channel);
                                                 } else {
@@ -207,16 +278,21 @@ public class MainArFragment extends PARFragment {
             if (mPOI != null) {
                 POIImageView poiImageView = (POIImageView) mPOI;
 
-                mEelstatus = msg.what;
-                switch (mEelstatus) {
+                switch (msg.what) {
                     case NORMAL_EEL:
+                        mEelstatus = msg.what;
                         poiImageView.setImageResourceForOverContent(null);
+                        sendNextMessage();
                         break;
                     case DISCHARGING_EEL:
+                        mEelstatus = msg.what;
                         poiImageView.setImageResourceForOverContent(R.drawable.electric);
+                        sendNextMessage();
+                        break;
+                    case MOVING_EEL:
+                        updatePosition(mPOI);
                         break;
                 }
-                sendNextMessage();
             }
 
             return true;
@@ -272,7 +348,14 @@ public class MainArFragment extends PARFragment {
 
         @Override
         protected UhAccessHelper.ConnectResult doInBackground(Void... params) {
-            return mUHAccessHelper.connect();
+            UhAccessHelper uhAccessHelper = mUHAccessHelper;
+            UhAccessHelper.ConnectResult ret = UhAccessHelper.ConnectResult.ErrUnknown;
+
+            if (uhAccessHelper != null) {
+                ret = uhAccessHelper.connect();
+            }
+
+            return ret;
         }
 
         @Override
