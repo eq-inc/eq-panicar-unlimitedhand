@@ -22,6 +22,11 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
+
         <activity android:name=".TopActivity" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -29,6 +34,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".AROnCameraActivity" android:screenOrientation="portrait" />
+        <activity android:name=".AROnMapActivity" android:screenOrientation="portrait" />
     </application>
 
 </manifest>

@@ -1,7 +1,6 @@
 package jp.eq_inc.aranduh.fragment;
 
 import android.app.Activity;
-import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Vibrator;
+import android.support.v7.widget.SwitchCompat;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -33,10 +33,14 @@ import jp.eq_inc.aranduh.poi.POIImageView;
 
 public class AROnCameraFragment extends PARFragment {
     private static final String TAG = AROnCameraFragment.class.getSimpleName();
+
+    private enum EEL_STATUS {
+        NORMAL_EEL,
+        DISCHARGING_EEL,
+        MOVING_EEL,
+    }
+
     private static final float MINIMUM_MOVE_DISTANCE = 0.0001f;
-    private static final int NORMAL_EEL = 0;
-    private static final int DISCHARGING_EEL = 1;
-    private static final int MOVING_EEL = 2;
     private static final int[] DISCHARGING_EEL_CHANNELS = {/*0, 1, */2, 3, 4, 5, /*6, 7*/};
 
     private LocationUpdater mLocationUpdater;
@@ -45,10 +49,11 @@ public class AROnCameraFragment extends PARFragment {
     private PARPoi mPOI;
     private Handler mMainLooperHandler;
     private UhAccessHelper mUHAccessHelper;
-    private int mEelstatus = NORMAL_EEL;
+    private EEL_STATUS mEelstatus = EEL_STATUS.NORMAL_EEL;
     private boolean mDischarging = false;
+    private SwitchCompat mSwtMovingPOI;
 
-    public static AROnCameraFragment newInstance(int cameraVisibility){
+    public static AROnCameraFragment newInstance(int cameraVisibility) {
         AROnCameraFragment ret = new AROnCameraFragment();
         Bundle argumentBundle = new Bundle();
 
@@ -73,11 +78,14 @@ public class AROnCameraFragment extends PARFragment {
         this.viewLayoutId = R.layout.fragment_ar_on_camera;
         View view = super.onCreateView(inflater, container, savedInstanceState);
         Bundle argumentBundle = getArguments();
-        if(argumentBundle != null){
+        if (argumentBundle != null) {
             int cameraVisibility = argumentBundle.getInt("cameraVisibility");
             view.findViewWithTag("arCameraView").setVisibility(cameraVisibility);
         }
         getRadarView().setRadarRange(500);
+
+        mSwtMovingPOI = (SwitchCompat) view.findViewById(R.id.swtMovingPOI);
+        mSwtMovingPOI.setChecked(false);
 
         UHConnectTask task = new UHConnectTask();
         task.execute();
@@ -177,7 +185,7 @@ public class AROnCameraFragment extends PARFragment {
             poi.setLocation(poiLocation);
             poi.updateLocation();
             int delayMS = 1000 / 60;    // 60fps
-            mMainLooperHandler.sendEmptyMessageDelayed(MOVING_EEL, delayMS);
+            mMainLooperHandler.sendEmptyMessageDelayed(EEL_STATUS.MOVING_EEL.ordinal(), delayMS);
         }
     }
 
@@ -229,7 +237,7 @@ public class AROnCameraFragment extends PARFragment {
         public boolean onTouch(View v, MotionEvent event) {
             boolean ret = false;
 
-            if (mEelstatus == DISCHARGING_EEL) {
+            if (mEelstatus == EEL_STATUS.DISCHARGING_EEL) {
                 int action = event.getAction();
 
                 switch (action) {
@@ -247,11 +255,11 @@ public class AROnCameraFragment extends PARFragment {
                                         uhAccessHelper.upVoltageLevel();
                                     }
 
-                                    while (mDischarging && (mEelstatus == DISCHARGING_EEL)) {
+                                    while (mDischarging && (mEelstatus == EEL_STATUS.DISCHARGING_EEL)) {
                                         LogUtil.d(TAG, "electricMuscleStimulation start");
 
                                         for (int channel : DISCHARGING_EEL_CHANNELS) {
-                                            if (mDischarging && (mEelstatus == DISCHARGING_EEL)) {
+                                            if (mDischarging && (mEelstatus == EEL_STATUS.DISCHARGING_EEL)) {
                                                 uhAccessHelper = mUHAccessHelper;
                                                 if (uhAccessHelper != null) {
                                                     uhAccessHelper.electricMuscleStimulation(channel);
@@ -293,19 +301,26 @@ public class AROnCameraFragment extends PARFragment {
             if (mPOI != null) {
                 POIImageView poiImageView = (POIImageView) mPOI;
 
-                switch (msg.what) {
+                EEL_STATUS eelStatus = EEL_STATUS.values()[msg.what];
+                switch (eelStatus) {
                     case NORMAL_EEL:
-                        mEelstatus = msg.what;
+                        mEelstatus = eelStatus;
                         poiImageView.setImageResourceForOverContent(null);
                         sendNextMessage();
                         break;
                     case DISCHARGING_EEL:
-                        mEelstatus = msg.what;
+                        mEelstatus = eelStatus;
                         poiImageView.setImageResourceForOverContent(R.drawable.electric);
                         sendNextMessage();
                         break;
                     case MOVING_EEL:
-                        updatePosition(mPOI);
+                        if (mSwtMovingPOI.isChecked()) {
+                            // MOVING_EELの場合はステータスは変更しないで元のままにする（変更したら放電状態が失われてしまうため）
+                            updatePosition(mPOI);
+                        } else {
+                            // 動かす必要がないときは、再度メッセージを送信
+                            sendNextMessage();
+                        }
                         break;
                 }
             }
