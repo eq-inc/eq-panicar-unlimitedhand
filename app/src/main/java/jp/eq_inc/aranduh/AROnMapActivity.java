@@ -2,7 +2,12 @@ package jp.eq_inc.aranduh;
 
 import android.Manifest;
 import android.app.FragmentManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -25,7 +30,9 @@ import jp.co.thcomp.util.RuntimePermissionUtil;
 import jp.co.thcomp.util.ToastUtil;
 import jp.eq_inc.aranduh.fragment.AROnCameraFragment;
 
-public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener {
+public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener, SensorEventListener {
+    private static final int MINIMUM_LOCATION_UPDATE_INTERVAL_MS = 5000;
+    private static final int MINIMUM_MAGNETIC_FIELD_UPDATE_INTERVAL_MS = 500;
     private GoogleMap mGoogleMap;
     private LocationUpdater mLocationUpdater;
     private Location mCurrentLocation;
@@ -39,6 +46,10 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
                 this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA},
                 mRuntimePermissionResultListener);
+
+        SensorManager manager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        Sensor magneticFieldSensor = manager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        manager.registerListener(this, magneticFieldSensor, SensorManager.SENSOR_DELAY_UI);
     }
 
     @Override
@@ -66,6 +77,7 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
         updateMapLocation(mCurrentLocation);
     }
 
+    // LocationListener START
     @Override
     public void onLocationChanged(Location location) {
         // 位置情報を更新
@@ -75,18 +87,30 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-
+        // 処理なし
     }
 
     @Override
     public void onProviderEnabled(String provider) {
-
+        // 処理なし
     }
 
     @Override
     public void onProviderDisabled(String provider) {
+        // 処理なし
+    }
+    // LocationListener END
+
+    // SensorEventListener START
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
+    // SensorEventListener END
 
     private void initializeGoogleMap() {
         mGoogleMap.setBuildingsEnabled(false);
@@ -137,7 +161,7 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
                 mLocationUpdater = new LocationUpdater(AROnMapActivity.this);
                 mLocationUpdater.setLocationUpdateAccuracy(Criteria.ACCURACY_FINE);
                 mLocationUpdater.setMinLocationDistance(1f);
-                mLocationUpdater.setMinLocationUpdateIntervalMs(5000);
+                mLocationUpdater.setMinLocationUpdateIntervalMs(MINIMUM_LOCATION_UPDATE_INTERVAL_MS);
                 mLocationUpdater.setLocationListener(AROnMapActivity.this);
                 mLocationUpdater.startPollingLocation(null);
             } else {
