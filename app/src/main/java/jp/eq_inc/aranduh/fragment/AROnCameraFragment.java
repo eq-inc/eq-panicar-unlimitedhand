@@ -22,6 +22,7 @@ import android.widget.Toast;
 import com.dopanic.panicarkit.lib.PARController;
 import com.dopanic.panicarkit.lib.PARFragment;
 import com.dopanic.panicarkit.lib.PARPoi;
+import com.dopanic.panicsensorkit.enums.PSKDeviceOrientation;
 
 import jp.co.thcomp.unlimitedhand.UhAccessHelper;
 import jp.co.thcomp.util.Constant;
@@ -52,6 +53,7 @@ public class AROnCameraFragment extends PARFragment {
     private EEL_STATUS mEelstatus = EEL_STATUS.NORMAL_EEL;
     private boolean mDischarging = false;
     private SwitchCompat mSwtMovingPOI;
+    private SwitchCompat mSwtEnableFaceupMode;
 
     public static AROnCameraFragment newInstance(int cameraVisibility) {
         AROnCameraFragment ret = new AROnCameraFragment();
@@ -86,6 +88,8 @@ public class AROnCameraFragment extends PARFragment {
 
         mSwtMovingPOI = (SwitchCompat) view.findViewById(R.id.swtMovingPOI);
         mSwtMovingPOI.setChecked(false);
+        mSwtEnableFaceupMode = (SwitchCompat) view.findViewById(R.id.swtEnableFaceupMode);
+        mSwtEnableFaceupMode.setChecked(false);
 
         UHConnectTask task = new UHConnectTask();
         task.execute();
@@ -115,6 +119,15 @@ public class AROnCameraFragment extends PARFragment {
         }
         PARController.getInstance().removeObject(mPOI);
         mPOI = null;
+    }
+
+    @Override
+    public void updateRadarOnOrientationChange(PSKDeviceOrientation newOrientation) {
+        if (mSwtEnableFaceupMode.isChecked()) {
+            // 基底クラス側の本メソッドで端末を寝かせたときに、PARRadarViewの全画面表示を行っているので、
+            // 全画面表示させたくないときは、基底クラス側のメソッドをコールしないようにすればよい
+            super.updateRadarOnOrientationChange(newOrientation);
+        }
     }
 
     private void sendNextMessage() {
@@ -187,6 +200,17 @@ public class AROnCameraFragment extends PARFragment {
             int delayMS = 1000 / 60;    // 60fps
             mMainLooperHandler.sendEmptyMessageDelayed(EEL_STATUS.MOVING_EEL.ordinal(), delayMS);
         }
+    }
+
+    public boolean setCameraViewVisibility(int cameraViewVisibility){
+        boolean ret = false;
+        View rootView = getView();
+
+        if(rootView != null){
+            rootView.findViewWithTag("arCameraView").setVisibility(cameraViewVisibility);
+        }
+
+        return ret;
     }
 
     private LocationUpdater.OnPollingStatusListener mPollingStatusListener = new LocationUpdater.OnPollingStatusListener() {
