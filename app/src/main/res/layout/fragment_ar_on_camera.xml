@@ -37,5 +37,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="moving POI"/>
+        <android.support.v7.widget.SwitchCompat
+            android:id="@+id/swtEnableFaceupMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="enable face up mode"/>
     </LinearLayout>
 </RelativeLayout>
