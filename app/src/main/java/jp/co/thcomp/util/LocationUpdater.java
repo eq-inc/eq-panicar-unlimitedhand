@@ -9,7 +9,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.support.annotation.NonNull;
 
@@ -18,7 +17,7 @@ public class LocationUpdater {
     private static final float DEFAULT_MIN_LOCATION_DISTANCE_METER = 5f;
     private static Location sLastCurrentLocation;
 
-    public interface OnPollingStatusListener{
+    public interface OnPollingStatusListener {
         void onChangePollingStatus(LocationUpdateStatus status);
     }
 
@@ -37,7 +36,6 @@ public class LocationUpdater {
     private Criteria mLocationUpdateCriteria = null;
     private long mMinLocationUpdateIntervalMS = DEFAULT_MIN_LOCATION_UPDATE_INTERVAL_MS;
     private float mMinLocationDistanceMeter = DEFAULT_MIN_LOCATION_DISTANCE_METER;
-    private HandlerThread mLocationUpdateHandlerThread = null;
 
     public LocationUpdater(Activity activity) {
         if (activity == null) {
@@ -57,6 +55,30 @@ public class LocationUpdater {
 
     public void setMinLocationDistance(float minLocationDistanceMeter) {
         mMinLocationDistanceMeter = minLocationDistanceMeter;
+    }
+
+    public void setLocationUpdateAccuracy(int accuracy) {
+        mLocationUpdateCriteria.setAccuracy(accuracy);
+    }
+
+    public void setLocationUpdateBearingAccuracy(int accuracy) {
+        mLocationUpdateCriteria.setBearingAccuracy(accuracy);
+    }
+
+    public void setLocationUpdateHorizontalAccuracy(int accuracy) {
+        mLocationUpdateCriteria.setHorizontalAccuracy(accuracy);
+    }
+
+    public void setLocationUpdatePowerRequirement(int requirement) {
+        mLocationUpdateCriteria.setPowerRequirement(requirement);
+    }
+
+    public void setLocationUpdateSpeedAccuracy(int accuracy) {
+        mLocationUpdateCriteria.setSpeedAccuracy(accuracy);
+    }
+
+    public void setLocationUpdateVerticalAccuracy(int accuracy) {
+        mLocationUpdateCriteria.setVerticalAccuracy(accuracy);
     }
 
     public void setLocationUpdateCriteria(Criteria criteria) {
@@ -80,7 +102,7 @@ public class LocationUpdater {
         if (mUpdateStatus == LocationUpdateStatus.Init) {
             mPollingStatusListener = listener;
             mUpdateStatus = LocationUpdateStatus.RequestingPermission;
-            if(mPollingStatusListener != null) {
+            if (mPollingStatusListener != null) {
                 ThreadUtil.runOnMainThread(mActivity, new Runnable() {
                     @Override
                     public void run() {
@@ -113,14 +135,12 @@ public class LocationUpdater {
 
                                 // 一旦停止させて、意図せずして残っているリソースを解放する
                                 stopPollingLocation();
-                                mLocationUpdateHandlerThread = new HandlerThread(LocationUpdater.class.getSimpleName(), Thread.MIN_PRIORITY);
-                                mLocationUpdateHandlerThread.start();
 
                                 try {
-                                    mLocationManager.requestLocationUpdates(mMinLocationUpdateIntervalMS, mMinLocationDistanceMeter, mLocationUpdateCriteria, mUpdateLocationListener, mLocationUpdateHandlerThread.getLooper());
+                                    mLocationManager.requestLocationUpdates(mMinLocationUpdateIntervalMS, mMinLocationDistanceMeter, mLocationUpdateCriteria, mUpdateLocationListener, Looper.getMainLooper());
                                 } catch (SecurityException e) {
                                     mUpdateStatus = LocationUpdateStatus.Init;
-                                    if(mPollingStatusListener != null) {
+                                    if (mPollingStatusListener != null) {
                                         ThreadUtil.runOnMainThread(mActivity, new Runnable() {
                                             @Override
                                             public void run() {
@@ -131,7 +151,7 @@ public class LocationUpdater {
                                 }
                             } else {
                                 mUpdateStatus = LocationUpdateStatus.Init;
-                                if(mPollingStatusListener != null) {
+                                if (mPollingStatusListener != null) {
                                     ThreadUtil.runOnMainThread(mActivity, new Runnable() {
                                         @Override
                                         public void run() {
@@ -147,14 +167,11 @@ public class LocationUpdater {
     }
 
     public void stopPollingLocation() {
-        if(mLocationUpdateHandlerThread != null){
+        if (mUpdateStatus != LocationUpdateStatus.Init) {
             try {
                 mLocationManager.removeUpdates(mUpdateLocationListener);
-            }catch (SecurityException e){
+            } catch (SecurityException e) {
             }
-
-            mLocationUpdateHandlerThread.quit();
-            mLocationUpdateHandlerThread = null;
 
             mUpdateStatus = LocationUpdateStatus.Init;
         }
