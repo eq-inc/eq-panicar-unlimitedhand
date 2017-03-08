@@ -11,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import jp.eq_inc.aranduh.AROnCameraActivity;
+import jp.eq_inc.aranduh.AROnMapActivity;
 import jp.eq_inc.aranduh.R;
 
 public class MenuItemFragment extends Fragment implements View.OnClickListener {
@@ -19,7 +20,9 @@ public class MenuItemFragment extends Fragment implements View.OnClickListener {
     private OnListFragmentInteractionListener mListener;
 
     public enum MenuItemType {
-        ARonCamera("AR on camera", AROnCameraActivity.class),;
+        ARonCamera("AR on camera", AROnCameraActivity.class),
+        ARonMap("AR on map", AROnMapActivity.class),
+        ;
 
         String title;
         Class activityClass;
