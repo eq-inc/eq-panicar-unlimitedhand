@@ -2,11 +2,7 @@ package jp.eq_inc.aranduh;
 
 import android.Manifest;
 import android.app.FragmentManager;
-import android.content.Context;
 import android.content.pm.PackageManager;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
@@ -15,7 +11,9 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SwitchCompat;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -25,31 +23,31 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
+import jp.co.thcomp.util.DeviceDirectionUpdater;
 import jp.co.thcomp.util.LocationUpdater;
 import jp.co.thcomp.util.RuntimePermissionUtil;
 import jp.co.thcomp.util.ToastUtil;
 import jp.eq_inc.aranduh.fragment.AROnCameraFragment;
 
-public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener, SensorEventListener {
+public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener, DeviceDirectionUpdater.OnDeviceDirectionChangedListener, CompoundButton.OnCheckedChangeListener {
     private static final int MINIMUM_LOCATION_UPDATE_INTERVAL_MS = 5000;
-    private static final int MINIMUM_MAGNETIC_FIELD_UPDATE_INTERVAL_MS = 500;
     private GoogleMap mGoogleMap;
     private LocationUpdater mLocationUpdater;
     private Location mCurrentLocation;
+    private SwitchCompat mSwtChangeMode;
+    private MapFragment mMapFragment;
+    private AROnCameraFragment mAROnCameraFragment;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_ar_on_map);
 
         RuntimePermissionUtil.requestPermissions(
                 this,
                 new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.CAMERA},
                 mRuntimePermissionResultListener);
 
-        SensorManager manager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        Sensor magneticFieldSensor = manager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        manager.registerListener(this, magneticFieldSensor, SensorManager.SENSOR_DELAY_UI);
+        DeviceDirectionUpdater.getInstance(this).start(this, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     @Override
@@ -57,7 +55,9 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
         super.onDestroy();
         if (mLocationUpdater != null) {
             mLocationUpdater.stopPollingLocation();
+            mLocationUpdater = null;
         }
+        DeviceDirectionUpdater.getInstance(this).stop(this);
     }
 
     @Override
@@ -101,16 +101,33 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
     }
     // LocationListener END
 
-    // SensorEventListener START
+    // DeviceDirectionUpdater.OnDeviceDirectionChangedListener START
     @Override
-    public void onSensorChanged(SensorEvent event) {
+    public void OnDeviceDirectionChanged(float azimuthDegree, float pitchDegree, float rollDegree) {
+        if (mGoogleMap != null && mCurrentLocation != null) {
+            CameraPosition currentCameraPosition = mGoogleMap.getCameraPosition();
+            if (currentCameraPosition != null) {
+                CameraPosition cameraPosition = CameraPosition.builder().target(currentCameraPosition.target).tilt(currentCameraPosition.tilt).bearing(azimuthDegree).zoom(mGoogleMap.getMaxZoomLevel()).build();
+                mGoogleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            }
+        }
     }
+    // DeviceDirectionUpdater.OnDeviceDirectionChangedListener END
 
+    // CompoundButton.OnCheckedChangeListener START
     @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        if (isChecked) {
+            // ARを有効にする
+            mAROnCameraFragment.setCameraViewVisibility(View.VISIBLE);
+            mMapFragment.getView().setVisibility(View.GONE);
+        } else {
+            // Mapを有効にする
+            mAROnCameraFragment.setCameraViewVisibility(View.GONE);
+            mMapFragment.getView().setVisibility(View.VISIBLE);
+        }
     }
-    // SensorEventListener END
+    // CompoundButton.OnCheckedChangeListener END
 
     private void initializeGoogleMap() {
         mGoogleMap.setBuildingsEnabled(false);
@@ -144,18 +161,22 @@ public class AROnMapActivity extends AppCompatActivity implements OnMapReadyCall
             }
 
             if (enableLaunch) {
-                FragmentManager manager = getFragmentManager();
-                MapFragment mapFragment = (MapFragment) manager.findFragmentByTag(MapFragment.class.getName());
-                if (mapFragment == null) {
-                    mapFragment = MapFragment.newInstance();
-                    manager.beginTransaction().add(R.id.container, mapFragment, MapFragment.class.getName()).commitAllowingStateLoss();
-                }
-                mapFragment.getMapAsync(AROnMapActivity.this);
+                setContentView(R.layout.activity_ar_on_map);
 
-                AROnCameraFragment arOnCameraFragment = (AROnCameraFragment) manager.findFragmentByTag(AROnCameraFragment.class.getName());
-                if (arOnCameraFragment == null) {
-                    arOnCameraFragment = AROnCameraFragment.newInstance(View.GONE);
-                    manager.beginTransaction().add(R.id.container, arOnCameraFragment, AROnCameraFragment.class.getName()).commitAllowingStateLoss();
+                mSwtChangeMode = (SwitchCompat) findViewById(R.id.swtChangeMapAndAR);
+                mSwtChangeMode.setOnCheckedChangeListener(AROnMapActivity.this);
+                FragmentManager manager = getFragmentManager();
+                mMapFragment = (MapFragment) manager.findFragmentByTag(MapFragment.class.getName());
+                if (mMapFragment == null) {
+                    mMapFragment = MapFragment.newInstance();
+                    manager.beginTransaction().add(R.id.container, mMapFragment, MapFragment.class.getName()).commitAllowingStateLoss();
+                }
+                mMapFragment.getMapAsync(AROnMapActivity.this);
+
+                mAROnCameraFragment = (AROnCameraFragment) manager.findFragmentByTag(AROnCameraFragment.class.getName());
+                if (mAROnCameraFragment == null) {
+                    mAROnCameraFragment = AROnCameraFragment.newInstance(View.GONE);
+                    manager.beginTransaction().add(R.id.container, mAROnCameraFragment, AROnCameraFragment.class.getName()).commitAllowingStateLoss();
                 }
 
                 mLocationUpdater = new LocationUpdater(AROnMapActivity.this);
