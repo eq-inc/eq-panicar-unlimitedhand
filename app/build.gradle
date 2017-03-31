@@ -5,10 +5,10 @@ android {
     buildToolsVersion "25.0.2"
     defaultConfig {
         applicationId "jp.eq_inc.aranduh"
-        minSdkVersion 14
+        minSdkVersion 15
         targetSdkVersion 25
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -26,6 +26,7 @@ repositories {
     maven { url 'http://raw.github.com/thcomp/Android_BluetoothHelper/master/repository' }
     maven { url 'http://raw.github.com/thcomp/Android_UnlimitedHandAccessHelper/master/repository' }
     maven { url 'http://raw.github.com/thcomp/Android_Utility/master/repository' }
+    maven { url 'http://raw.github.com/thcomp/Android_OpenGLHelper/master/repository' }
 }
 
 dependencies {
@@ -37,8 +38,9 @@ dependencies {
     //    compile project(':bt_helper')
 //    compile project(':unlimitedhand')
     compile 'com.android.support:appcompat-v7:25.1.0'
-    compile 'jp.co.thcomp:android_utility:1.0.+'
+    compile 'jp.co.thcomp:android_utility:1.0.22'
     compile 'jp.co.thcomp:android_uh_access_helper:0.0.+'
+    compile 'jp.co.thcomp:android_opengl_helper:0.0.+'
     compile 'com.android.support:support-v4:25.1.0'
     compile 'com.android.support:recyclerview-v7:25.1.0'
     compile 'com.google.android.gms:play-services-maps:10.2.0'

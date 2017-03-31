@@ -126,6 +126,7 @@ public class DeviceDirectionUpdater {
             switch (event.sensor.getType()) {
                 case Sensor.TYPE_ACCELEROMETER:
                     mGravity = event.values.clone();
+                    LogUtil.d("DeviceDirectionUpdater", Arrays.toString(mGravity));
                     break;
                 case Sensor.TYPE_MAGNETIC_FIELD:
                     mGeomagnetic = event.values.clone();

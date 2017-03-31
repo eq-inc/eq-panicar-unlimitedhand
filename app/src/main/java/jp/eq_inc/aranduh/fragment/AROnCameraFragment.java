@@ -35,25 +35,25 @@ import jp.eq_inc.aranduh.poi.POIImageView;
 public class AROnCameraFragment extends PARFragment {
     private static final String TAG = AROnCameraFragment.class.getSimpleName();
 
-    private enum EEL_STATUS {
+    protected enum EEL_STATUS {
         NORMAL_EEL,
         DISCHARGING_EEL,
         MOVING_EEL,
     }
 
-    private static final float MINIMUM_MOVE_DISTANCE = 0.0001f;
-    private static final int[] DISCHARGING_EEL_CHANNELS = {/*0, 1, */2, 3, 4, 5, /*6, 7*/};
+    protected static final float MINIMUM_MOVE_DISTANCE = 0.0001f;
+    protected static final int[] DISCHARGING_EEL_CHANNELS = {/*0, 1, */2, 3, 4, 5, /*6, 7*/};
 
-    private LocationUpdater mLocationUpdater;
-    private Location mFirstLocation;
-    private Location mDistinationLocation;
-    private PARPoi mPOI;
-    private Handler mMainLooperHandler;
-    private UhAccessHelper mUHAccessHelper;
-    private EEL_STATUS mEelstatus = EEL_STATUS.NORMAL_EEL;
-    private boolean mDischarging = false;
-    private SwitchCompat mSwtMovingPOI;
-    private SwitchCompat mSwtEnableFaceupMode;
+    protected LocationUpdater mLocationUpdater;
+    protected Location mFirstLocation;
+    protected Location mDistinationLocation;
+    protected PARPoi mPOI;
+    protected Handler mMainLooperHandler;
+    protected UhAccessHelper mUHAccessHelper;
+    protected EEL_STATUS mEelstatus = EEL_STATUS.NORMAL_EEL;
+    protected boolean mDischarging = false;
+    protected SwitchCompat mSwtMovingPOI;
+    protected SwitchCompat mSwtEnableFaceupMode;
 
     public static AROnCameraFragment newInstance(int cameraVisibility) {
         AROnCameraFragment ret = new AROnCameraFragment();
@@ -71,8 +71,8 @@ public class AROnCameraFragment extends PARFragment {
 
         LogUtil.logoutput(Constant.LOG_SWITCH.LOG_SWITCH_ERROR | Constant.LOG_SWITCH.LOG_SWITCH_WARNING | Constant.LOG_SWITCH.LOG_SWITCH_INFO | Constant.LOG_SWITCH.LOG_SWITCH_DEBUG);
         mLocationUpdater = new LocationUpdater(getActivity());
-        mLocationUpdater.setLocationListener(mLocationListener);
-        mMainLooperHandler = new Handler(Looper.getMainLooper(), mRenderHandlerCallback);
+        mLocationUpdater.setLocationListener(getLocationListener());
+        mMainLooperHandler = new Handler(Looper.getMainLooper(), getRenderHandlerCallback());
     }
 
     @Override
@@ -130,13 +130,13 @@ public class AROnCameraFragment extends PARFragment {
         }
     }
 
-    private void sendNextMessage() {
+    protected void sendNextMessage() {
         int nextStatus = ((int) (Math.random() * 1000)) % 3;
         int delayMS = (((int) (Math.random() * 1000)) % 3) * 1000;
         mMainLooperHandler.sendEmptyMessageDelayed(nextStatus, delayMS);
     }
 
-    private void updatePosition(PARPoi poi) {
+    protected void updatePosition(PARPoi poi) {
         Location poiLocation = poi.getLocation();
 
         if (mDistinationLocation == null) {
@@ -202,18 +202,90 @@ public class AROnCameraFragment extends PARFragment {
         }
     }
 
-    public boolean setCameraViewVisibility(int cameraViewVisibility){
+    public boolean setCameraViewVisibility(int cameraViewVisibility) {
         boolean ret = false;
         View rootView = getView();
 
-        if(rootView != null){
+        if (rootView != null) {
             rootView.findViewWithTag("arCameraView").setVisibility(cameraViewVisibility);
         }
 
         return ret;
     }
 
-    private LocationUpdater.OnPollingStatusListener mPollingStatusListener = new LocationUpdater.OnPollingStatusListener() {
+    protected Handler.Callback getRenderHandlerCallback() {
+        return new Handler.Callback() {
+            @Override
+            public boolean handleMessage(Message msg) {
+                if (mPOI != null) {
+                    POIImageView poiImageView = (POIImageView) mPOI;
+
+                    EEL_STATUS eelStatus = EEL_STATUS.values()[msg.what];
+                    switch (eelStatus) {
+                        case NORMAL_EEL:
+                            mEelstatus = eelStatus;
+                            poiImageView.setImageResourceForOverContent(null);
+                            sendNextMessage();
+                            break;
+                        case DISCHARGING_EEL:
+                            mEelstatus = eelStatus;
+                            poiImageView.setImageResourceForOverContent(R.drawable.electric);
+                            sendNextMessage();
+                            break;
+                        case MOVING_EEL:
+                            if (mSwtMovingPOI.isChecked()) {
+                                // MOVING_EELの場合はステータスは変更しないで元のままにする（変更したら放電状態が失われてしまうため）
+                                updatePosition(mPOI);
+                            } else {
+                                // 動かす必要がないときは、再度メッセージを送信
+                                sendNextMessage();
+                            }
+                            break;
+                    }
+                }
+
+                return true;
+            }
+        };
+    }
+
+    protected LocationListener getLocationListener(){
+        return new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                if (mFirstLocation == null) {
+                    mFirstLocation = new Location(location);
+
+                    // show POI near first location
+                    //mPOI = new POISurfaceView(mFirstLocation, new ElectricEelRenderer(getActivity()));
+                    mFirstLocation.setLatitude(mFirstLocation.getLatitude() + 0.01);
+                    mFirstLocation.setLongitude(mFirstLocation.getLongitude() + 0.01);
+                    mPOI = new POIImageView(mFirstLocation);
+                    ((POIImageView) mPOI).setOnTouchListener(mPOITouchListener);
+                    ((POIImageView) mPOI).setImageResource(R.drawable.eel);
+                    PARController.getInstance().addPoi(mPOI);
+                    sendNextMessage();
+                }
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+                // 処理なし
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+                // 処理なし
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                // 処理なし
+            }
+        };
+    }
+
+    protected LocationUpdater.OnPollingStatusListener mPollingStatusListener = new LocationUpdater.OnPollingStatusListener() {
         @Override
         public void onChangePollingStatus(LocationUpdater.LocationUpdateStatus status) {
             if (status == LocationUpdater.LocationUpdateStatus.NotAllowedPermission) {
@@ -222,41 +294,7 @@ public class AROnCameraFragment extends PARFragment {
         }
     };
 
-    private LocationListener mLocationListener = new LocationListener() {
-        @Override
-        public void onLocationChanged(Location location) {
-            if (mFirstLocation == null) {
-                mFirstLocation = new Location(location);
-
-                // show POI near first location
-                //mPOI = new POISurfaceView(mFirstLocation, new ElectricEelRenderer(getActivity()));
-                mFirstLocation.setLatitude(mFirstLocation.getLatitude() + 0.01);
-                mFirstLocation.setLongitude(mFirstLocation.getLongitude() + 0.01);
-                mPOI = new POIImageView(mFirstLocation);
-                ((POIImageView) mPOI).setOnTouchListener(mPOITouchListener);
-                ((POIImageView) mPOI).setImageResource(R.drawable.eel);
-                PARController.getInstance().addPoi(mPOI);
-                sendNextMessage();
-            }
-        }
-
-        @Override
-        public void onStatusChanged(String provider, int status, Bundle extras) {
-
-        }
-
-        @Override
-        public void onProviderEnabled(String provider) {
-
-        }
-
-        @Override
-        public void onProviderDisabled(String provider) {
-
-        }
-    };
-
-    private View.OnTouchListener mPOITouchListener = new View.OnTouchListener() {
+    protected View.OnTouchListener mPOITouchListener = new View.OnTouchListener() {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             boolean ret = false;
@@ -319,41 +357,7 @@ public class AROnCameraFragment extends PARFragment {
         }
     };
 
-    private Handler.Callback mRenderHandlerCallback = new Handler.Callback() {
-        @Override
-        public boolean handleMessage(Message msg) {
-            if (mPOI != null) {
-                POIImageView poiImageView = (POIImageView) mPOI;
-
-                EEL_STATUS eelStatus = EEL_STATUS.values()[msg.what];
-                switch (eelStatus) {
-                    case NORMAL_EEL:
-                        mEelstatus = eelStatus;
-                        poiImageView.setImageResourceForOverContent(null);
-                        sendNextMessage();
-                        break;
-                    case DISCHARGING_EEL:
-                        mEelstatus = eelStatus;
-                        poiImageView.setImageResourceForOverContent(R.drawable.electric);
-                        sendNextMessage();
-                        break;
-                    case MOVING_EEL:
-                        if (mSwtMovingPOI.isChecked()) {
-                            // MOVING_EELの場合はステータスは変更しないで元のままにする（変更したら放電状態が失われてしまうため）
-                            updatePosition(mPOI);
-                        } else {
-                            // 動かす必要がないときは、再度メッセージを送信
-                            sendNextMessage();
-                        }
-                        break;
-                }
-            }
-
-            return true;
-        }
-    };
-
-    private class UHConnectTask extends AsyncTask<Void, Void, UhAccessHelper.ConnectResult> {
+    protected class UHConnectTask extends AsyncTask<Void, Void, UhAccessHelper.ConnectResult> {
         private ProgressDialog mConnectingDialog;
         private boolean mUseUH = true;
 
