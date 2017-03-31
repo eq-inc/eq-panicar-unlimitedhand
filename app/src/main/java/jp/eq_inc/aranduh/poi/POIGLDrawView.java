@@ -1,6 +1,7 @@
 package jp.eq_inc.aranduh.poi;
 
 import android.content.Context;
+import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.location.Location;
 import android.opengl.GLSurfaceView;
@@ -40,6 +41,9 @@ public class POIGLDrawView extends PARPoi {
         _labelView = (RelativeLayout) inflater.inflate(R.layout.poi_gldrawview, null, false);
 
         mContentDrawView = (GLDrawView) _labelView.findViewById(R.id.dvPoiContent);
+        mContentDrawView.setZOrderOnTop(true);
+        mContentDrawView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        mContentDrawView.setEGLConfigChooser(8, 8, 8, 8, 0, 0);
         GLContext glContext = new GLContext(mContentDrawView, mContentDrawView.getContext());
         glContext.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         mContentDrawView.startRenderer(glContext, mContentDrawView.getContext().getApplicationContext());

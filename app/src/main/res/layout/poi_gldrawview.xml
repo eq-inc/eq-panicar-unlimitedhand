@@ -5,7 +5,7 @@
 
     <jp.co.thcomp.glsurfaceview.GLDrawView
         android:id="@+id/dvPoiContent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_width="@dimen/droid_3dcg_width"
+        android:layout_height="@dimen/droid_3dcg_height"/>
 
 </RelativeLayout>
