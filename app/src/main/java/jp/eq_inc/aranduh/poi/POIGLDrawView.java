@@ -44,6 +44,7 @@ public class POIGLDrawView extends PARPoi {
         mContentDrawView.setZOrderOnTop(true);
         mContentDrawView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
         mContentDrawView.setEGLConfigChooser(8, 8, 8, 8, 0, 0);
+        mContentDrawView.setClearColor(0);
         GLContext glContext = new GLContext(mContentDrawView, mContentDrawView.getContext());
         glContext.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         mContentDrawView.startRenderer(glContext, mContentDrawView.getContext().getApplicationContext());
